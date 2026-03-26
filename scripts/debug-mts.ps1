@@ -1,0 +1,22 @@
+$ErrorActionPreference = "Stop"
+
+$gameDir = "F:\game\steam\steamapps\common\SlayTheSpire"
+$javaExe = Join-Path $gameDir "jre\bin\java.exe"
+$mtsJar = Join-Path $gameDir "ModTheSpire.jar"
+
+if (-not (Test-Path $javaExe)) {
+    throw "Bundled game Java not found at $javaExe"
+}
+
+if (-not (Test-Path $mtsJar)) {
+    throw "ModTheSpire.jar not found at $mtsJar"
+}
+
+Push-Location $gameDir
+try {
+    & $javaExe `
+        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005" `
+        -jar $mtsJar
+} finally {
+    Pop-Location
+}

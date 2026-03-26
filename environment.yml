@@ -1,0 +1,6 @@
+name: sts-game-mcp
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip

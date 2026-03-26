@@ -1,0 +1,14 @@
+[
+  {
+    "modid": "stsmodstarter",
+    "name": "Sts Mod Starter",
+    "author_list": [
+      "fjy"
+    ],
+    "description": "A local Slay the Spire bridge mod that exports game state and accepts high-level control commands for MCP clients.",
+    "version": "0.2.0",
+    "dependencies": [
+      "basemod"
+    ]
+  }
+]

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sts-game-mcp"
+version = "0.2.0"
+description = "A standalone MCP server for the Slay the Spire bridge runtime."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.scripts]
+sts-game-mcp = "sts_game_mcp.__main__:main"
+
+[tool.setuptools]
+packages = ["sts_game_mcp"]
