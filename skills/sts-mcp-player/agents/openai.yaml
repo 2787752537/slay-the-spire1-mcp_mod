@@ -1,0 +1,3 @@
+﻿display_name: STS MCP Player
+short_description: Play runs through the repo MCP bridge.
+default_prompt: Read Slay the Spire state, plan a route, and take one MCP action at a time without changing game logic.

@@ -9,6 +9,7 @@ import com.megacrit.cardcrawl.characters.AbstractPlayer;
 import com.megacrit.cardcrawl.blights.AbstractBlight;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.EnergyManager;
+import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.events.GenericEventDialog;
 import com.megacrit.cardcrawl.events.RoomEventDialog;
@@ -266,6 +267,7 @@ public class GameStateBridge {
         populateShopState(state, room);
         populateTreasureState(state, room);
         populateMapState(state, room);
+        populateDerivedState(state, room);
         populateConfirmState(state);
         populateAvailableActions(state);
         return state;
@@ -589,6 +591,9 @@ public class GameStateBridge {
     }
 
     private void populateCampfireState(BridgeProtocol.StateSnapshot state, AbstractRoom room) {
+        if (AbstractDungeon.screen == AbstractDungeon.CurrentScreen.MAP) {
+            return;
+        }
         if (room == null || !room.getClass().getSimpleName().contains("RestRoom")) {
             return;
         }
@@ -711,6 +716,8 @@ public class GameStateBridge {
             chestState.gold_reward = Boolean.TRUE.equals(goldReward);
             Boolean cursed = (Boolean) ReflectionHacks.getPrivate(chestObj, chestObj.getClass().getSuperclass(), "cursed");
             chestState.cursed = Boolean.TRUE.equals(cursed);
+            chestState.reward_screen_open = AbstractDungeon.screen == AbstractDungeon.CurrentScreen.BOSS_REWARD
+                    || (state.room_rewards != null && !state.room_rewards.isEmpty());
         } catch (RuntimeException exception) {
             this.lastError = exception.getMessage();
         }
@@ -817,6 +824,7 @@ public class GameStateBridge {
             mapState.current_x = current.x;
             mapState.current_y = current.y;
         }
+        mapState.boss_available = canEnterBoss();
         if (AbstractDungeon.map != null) {
             for (ArrayList<MapRoomNode> row : AbstractDungeon.map) {
                 for (MapRoomNode node : row) {
@@ -858,6 +866,30 @@ public class GameStateBridge {
             }
         }
         return nodeState;
+    }
+    private void populateDerivedState(BridgeProtocol.StateSnapshot state, AbstractRoom room) {
+        int playableCount = 0;
+        for (BridgeProtocol.CardState card : state.hand) {
+            if (card != null && card.playable) {
+                playableCount++;
+            }
+        }
+        state.playable_hand_count = playableCount;
+        state.has_playable_cards = playableCount > 0;
+
+        if ("boss_reward".equals(state.context)) {
+            state.reward_stage = "boss_reward";
+        } else if ("card_reward".equals(state.context)) {
+            state.reward_stage = "card_reward";
+        } else if ("room_rewards".equals(state.context)) {
+            state.reward_stage = "room_rewards";
+        } else if (state.treasure_chest != null && state.treasure_chest.is_open) {
+            state.reward_stage = room != null && room.getClass().getSimpleName().contains("TreasureRoomBoss")
+                    ? "boss_treasure"
+                    : "treasure_opened";
+        } else {
+            state.reward_stage = "none";
+        }
     }
     private void populateConfirmState(BridgeProtocol.StateSnapshot state) {
         if (!state.in_game) {
@@ -920,6 +952,9 @@ public class GameStateBridge {
             state.cancel_context = "shop";
             return;
         }
+        if (AbstractDungeon.screen == AbstractDungeon.CurrentScreen.MAP) {
+            return;
+        }
         CampfireUI campfireUI = tryGetCampfireUi();
         if (campfireUI != null) {
             ConfirmButton button = campfireUI.confirmButton;
@@ -946,7 +981,9 @@ public class GameStateBridge {
             state.available_actions.add(new BridgeProtocol.ActionDescriptor("select_character", "Select a character by option_index."));
         }
         if ("combat".equals(state.context) && isPlayerTurn()) {
-            state.available_actions.add(new BridgeProtocol.ActionDescriptor("play_card", "Play a card from hand by card_uuid or card_index. Use target_index for single-target cards."));
+            if (hasPlayableHandCards(state)) {
+                state.available_actions.add(new BridgeProtocol.ActionDescriptor("play_card", "Play a card from hand by card_uuid or card_index. Use target_index for single-target cards."));
+            }
             state.available_actions.add(new BridgeProtocol.ActionDescriptor("end_turn", "End the current combat turn."));
             if (hasUsablePotion()) {
                 state.available_actions.add(new BridgeProtocol.ActionDescriptor("use_potion", "Use a combat potion by option_index. Use target_index for targeted potions."));
@@ -988,6 +1025,9 @@ public class GameStateBridge {
         }
         if ("map".equals(state.context) && state.map != null && !state.map.available_nodes.isEmpty()) {
             state.available_actions.add(new BridgeProtocol.ActionDescriptor("choose_map_node", "Pick a map node using x and y."));
+        }
+        if ("map".equals(state.context) && state.map != null && state.map.boss_available) {
+            state.available_actions.add(new BridgeProtocol.ActionDescriptor("enter_boss", "Click the boss icon on the map."));
         }
         if (!state.hand_select_cards.isEmpty()) {
             state.available_actions.add(new BridgeProtocol.ActionDescriptor("select_hand_card", "Select a hand card by card_uuid or card_index."));
@@ -1050,6 +1090,9 @@ public class GameStateBridge {
             if ("open_shop".equals(action)) {
                 return success(command.id, BridgeActions.openShop());
             }
+            if ("enter_boss".equals(action)) {
+                return success(command.id, BridgeActions.enterBoss());
+            }
             if ("buy_shop_card".equals(action)) {
                 return success(command.id, BridgeActions.buyShopCard(command));
             }
@@ -1102,6 +1145,21 @@ public class GameStateBridge {
         return response;
     }
 
+    private boolean hasPlayableHandCards(BridgeProtocol.StateSnapshot state) {
+        if (state == null || state.hand == null || state.hand.isEmpty()) {
+            return false;
+        }
+        if (!isPlayerTurn()) {
+            return false;
+        }
+        for (BridgeProtocol.CardState card : state.hand) {
+            if (card != null && card.playable) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean canPlayCard(AbstractCard card) {
         return card != null && isPlayerTurn() && card.canUse(AbstractDungeon.player, firstLivingMonster());
     }
@@ -1125,6 +1183,24 @@ public class GameStateBridge {
             }
         }
         return false;
+    }
+
+    private boolean canEnterBoss() {
+        if (AbstractDungeon.screen != AbstractDungeon.CurrentScreen.MAP || AbstractDungeon.dungeonMapScreen == null || AbstractDungeon.dungeonMapScreen.map == null) {
+            return false;
+        }
+        AbstractRoom room = safeGetCurrentRoom();
+        MapRoomNode current = AbstractDungeon.getCurrMapNode();
+        if (room == null || current == null || room.phase != AbstractRoom.RoomPhase.COMPLETE) {
+            return false;
+        }
+        if (!Settings.isDebug && !"TheEnding".equals(AbstractDungeon.id) && current.y != 14) {
+            return false;
+        }
+        if ("TheEnding".equals(AbstractDungeon.id) && current.y != 2) {
+            return false;
+        }
+        return AbstractDungeon.dungeonMapScreen.map.bossHb != null;
     }
 
     private boolean canUseProceedButton() {
@@ -1230,6 +1306,15 @@ public class GameStateBridge {
         return value == null ? "" : value.name();
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 

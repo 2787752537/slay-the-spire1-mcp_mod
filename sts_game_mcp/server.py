@@ -21,6 +21,7 @@ SUPPORTED_PROTOCOL_VERSIONS = (
 SERVER_NAME = "sts-game-mcp"
 STATE_RESOURCE_URI = "sts-game://state"
 RUNTIME_STATUS_RESOURCE_URI = "sts-game://runtime-status"
+STATE_SETTLE_MS = 250
 
 
 class StsRuntime:
@@ -86,6 +87,15 @@ class StsRuntime:
             state["grid_cards"] = state.get("grid_select_cards") or []
         if "hand_cards" not in state:
             state["hand_cards"] = state.get("hand_select_cards") or []
+        actions = state.get("available_actions") or []
+        state["action_names"] = [action.get("action") for action in actions if isinstance(action, dict) and action.get("action")]
+        hand = state.get("hand") or []
+        playable_hand = [card for card in hand if isinstance(card, dict) and card.get("playable")]
+        state["playable_hand"] = playable_hand
+        state["playable_hand_count"] = state.get("playable_hand_count", len(playable_hand))
+        state["has_playable_cards"] = state.get("has_playable_cards", bool(playable_hand))
+        rewards = state.get("room_rewards") or []
+        state["reward_types"] = [reward.get("type") for reward in rewards if isinstance(reward, dict) and reward.get("type")]
         map_state = state.get("map") or {}
         if "map_available_nodes" not in state:
             state["map_available_nodes"] = map_state.get("available_nodes")
@@ -255,6 +265,7 @@ class SimpleMcpServer:
                                 "end_turn",
                                 "use_potion",
                                 "proceed",
+                                "enter_boss",
                                 "choose_main_menu_option",
                                 "select_character",
                                 "claim_room_reward",
@@ -381,4 +392,6 @@ def main(argv: Optional[List[str]] = None) -> None:
     runtime_dir = resolve_runtime_dir(args)
     runtime = StsRuntime(runtime_dir)
     SimpleMcpServer(runtime).serve()
+
+
 

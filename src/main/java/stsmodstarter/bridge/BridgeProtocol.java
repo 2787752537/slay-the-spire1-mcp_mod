@@ -39,6 +39,9 @@ public final class BridgeProtocol {
         public Integer floor_num;
         public Boolean first_room_chosen;
         public String selected_character;
+        public String reward_stage;
+        public boolean has_playable_cards;
+        public int playable_hand_count;
         public PlayerState player;
         public ArrayList<CreaturePowerState> player_powers = new ArrayList<CreaturePowerState>();
         public ArrayList<CardState> hand = new ArrayList<CardState>();
@@ -213,11 +216,13 @@ public final class BridgeProtocol {
         public String relic_reward;
         public boolean gold_reward;
         public boolean cursed;
+        public boolean reward_screen_open;
     }
 
     public static class MapState {
         public Integer current_x;
         public Integer current_y;
+        public boolean boss_available;
         public ArrayList<MapNodeState> available_nodes = new ArrayList<MapNodeState>();
         public ArrayList<MapNodeState> all_nodes = new ArrayList<MapNodeState>();
     }
@@ -247,3 +252,6 @@ public final class BridgeProtocol {
         }
     }
 }
+
+
+

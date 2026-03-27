@@ -364,6 +364,18 @@ public final class BridgeActions {
         click(hitbox);
         return "Proceed button clicked";
     }
+    public static String enterBoss() {
+        if (AbstractDungeon.screen != AbstractDungeon.CurrentScreen.MAP || AbstractDungeon.dungeonMapScreen == null || AbstractDungeon.dungeonMapScreen.map == null) {
+            throw new IllegalStateException("Boss icon is not available");
+        }
+        Hitbox hitbox = AbstractDungeon.dungeonMapScreen.map.bossHb;
+        if (hitbox == null) {
+            throw new IllegalStateException("Boss hitbox is not available");
+        }
+        click(hitbox);
+        return "Boss icon clicked";
+    }
+
 
     public static String claimRoomReward(BridgeProtocol.CommandEnvelope command) {
         ArrayList<RewardItem> rewards = getVisibleRoomRewards();
@@ -382,7 +394,6 @@ public final class BridgeActions {
         return "Clicked room reward " + rewardIndex;
     }
 
-    // 婵犵數濮烽弫鍛婄箾閳ь剚绻涙担鍐叉搐绾惧湱鎲搁悧鍫濈瑲闁稿顑夐弻锟犲炊閳轰焦鐎鹃梺鍛婄懃缁绘﹢寮婚悢鐓庣畾闁哄鏅濋幘缁樼厱濠电姴瀚崢鎾煛瀹€瀣М闁诡喓鍨藉畷銊︾節閸曨偄娈ュ┑鐘愁問閸ｎ垳寰婃禒瀣櫇妞ゅ繐鐗嗛拑鐔兼煥濠靛棭妲搁幆鐔兼⒑闂堟侗妲堕柛搴ｅ劋鐎靛ジ鍩€椤掑嫭鈷掑ù锝勮閻掗箖鎮跺鐓庝喊鐎规洘绻傞悾婵嬪礋閸偅娅旈梻浣瑰缁诲倿藝椤栫偛纭€闁规儼濮ら悡鍐煢濡警妲规い銉у仱閺岋綁顢橀悤浣圭杹濠殿喖锕ュ钘夌暦閵婏妇绡€闁告洦鍘鹃崢鎰版⒒娴ｈ銇熼柛鎾寸懇婵″墎绮欏▎鎯ф闂佸搫琚崕娲极閸愵喗鐓ラ柡鍐ㄥ€婚幗鍌涗繆椤愩垹鏆欐い顏勫暣婵¤埖鎯旈垾鑼跺焻闂備礁鎲￠敃銏㈢不閺嶎厼绠栭柣鎴ｆ缁犳盯鏌ｅΔ鈧悧蹇涘储閽樺娓婚柕鍫濇噽缁犱即鎮楀鍗炲幋鐎规洘娲濈粻娑樷槈濞嗘垵骞堥梻浣哥枃濡椼劑鎳楅崼鏇熷€块柟闂寸劍閻撴瑦銇勯弽銊ㄥ闁哄棴绲块埀顒冾潐濞叉粓宕伴弽顓溾偓浣糕槈濡粎鍠庨悾鈩冿紣娴ｅ壊妫滈梻浣烘嚀閸氬鎮鹃鍫濆瀭婵炲樊浜滅壕鍧楁煟閺冨洤浜归柛娆愭崌閺屾盯濡烽幋婵嗩仾鐎规洖鍟块—鍐Χ閸涱垳顔掓繛瀛樼矊閻栫厧顕ｆ繝姘у璺侯儏娴犳儳顪冮妶鍡欏缂佸鍨甸埥澶庮槾缂佽鲸鎸婚幏鍛鐎ｎ亝鎳欑紓鍌欐祰椤曆呪偓姘煎幘缁顓兼径濠勵啇婵炶揪缍€閸婂€燁樄闁哄本绋戦埥澶愬础閻愯尙顔愮紓鍌欑窔椤ゅ倿宕ｉ崘顭戞綎婵炲樊浜滄导鐘绘煕閺囥劌浜藉ù鐓庣焸濮婃椽骞栭悙鎻掝瀳闂佺粯鐗炴竟鍫ユ儗妤ｅ啯鈷戠紒瀣濠€鎵磼鐎ｎ偄鐏╂繛鍡愬灲閹瑩鎮滃Ο鐓庡箰闁诲骸绠嶉崕閬嶅疮椤愶絼绻嗛柤娴嬫櫇绾惧ジ鏌熺紒妯轰刊闁绘挸銈搁弻锛勪沪閸撗岀伇缂備胶濮电粙鎾诲焵椤掑﹦绉靛ù婊勭矋閹便劑濮€閻橆偅鏂€闂佺粯鍔樼亸娆愭櫠濞戙垺鐓曢柕濞垮劤娴犮垽鏌ｉ敐鍥у幋闁轰焦鎹囬幃鈺呮惞椤愶絿褰ㄩ梻鍌欑閹测€趁洪敃鍌氱；闁圭儤顨呯痪褔鏌ｉ幋鐑嗙劷缂佲檧鍋撻梻鍌氬€搁悧濠勭矙閹达箑鐒垫い鎺嗗亾缂傚秴锕獮鍐樄鐎殿喗鎸抽幃銏㈢矙閸喕绱熼梻鍌欑劍閸庡啿霉濮樿泛纾诲ù锝呮贡椤╁弶绻濇繝鍌氼伌婵炲牅绮欓弻锝夊箛椤栨氨姣㈠┑顔角滈崝鎴﹀蓟?
     private static ArrayList<RewardItem> getVisibleRoomRewards() {
         if (AbstractDungeon.screen == AbstractDungeon.CurrentScreen.COMBAT_REWARD
                 && AbstractDungeon.combatRewardScreen != null
@@ -522,7 +533,6 @@ public final class BridgeActions {
             throw new IllegalStateException("Treasure chest is already open");
         }
         Hitbox chestHitbox = (Hitbox) ReflectionHacks.getPrivate(chest, AbstractChest.class, "hb");
-        // 闂傚倷娴囬褍顫濋敃鍌︾稏濠㈣泛鏈畷鏌ユ煕閺囥劌鐏遍柡浣革躬閺屾盯顢曢妶鍛亖闂佸磭绮ú鐔煎蓟閿濆绫嶉柍褜鍓欏嵄闁圭儤鍨熼弸鏍煛鐏炶鍔滈柣鎾存礃娣囧﹪顢涘鍐ㄤ粯闂佸搫顑嗗Λ鍐蓟?hitbox 闂傚倸鍊烽懗鍓佸垝椤栫偛绀夋俊銈呮噹缁犵娀鏌熼幑鎰靛殭闁告俺顫夐妵鍕即濡も偓娴滈箖姊烘潪鎵槮缂佸鍩栫粋鎺楁晝閸屾稑娈愰梺鍐叉惈閸燁垶宕伴幒妤佲拻濞达絽鎼崝锕傛煛閸涱喚娲撮柟顔芥そ婵℃瓕顦抽柡鍡樼矒閺岀喓绱掗姀鐘崇亪闂佹椿鍘介〃濠囧蓟閻旇　鍋撻悽娈跨劸濞寸媴绠撻弻鈩冨緞婵犲嫮楔濠殿喖锕ュ浠嬨€佸Δ浣虹懝闁搞儯鍔庨弳顓炩攽閻橆偅濯伴柛鎰ㄦ櫅娴犲瓨绻?
         click(chestHitbox);
         return "Clicked treasure chest";
     }
@@ -588,7 +598,6 @@ public final class BridgeActions {
         return "Queued shop purge click";
     }
 
-    // 鎴樻枟鑽按鍙ā鎷熻緭鍏ワ紝涓嶇洿鎺ヨ皟鐢?use()锛涚洰鏍囪嵂姘翠細绛夊緟鍘熺増杩涘叆閫夋€ā寮忋€?
     public static String usePotion(BridgeProtocol.CommandEnvelope command) {
         requireContext("combat");
         if (pendingPotionUse != null) {
@@ -1452,6 +1461,7 @@ public final class BridgeActions {
         }
     }
 }
+
 
 
 
