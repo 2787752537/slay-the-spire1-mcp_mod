@@ -1,8 +1,13 @@
-$ErrorActionPreference = "Stop"
+param(
+    [string]$GameDir
+)
 
-$gameDir = "F:\game\steam\steamapps\common\SlayTheSpire"
-$javaExe = Join-Path $gameDir "jre\bin\java.exe"
-$mtsJar = Join-Path $gameDir "ModTheSpire.jar"
+$ErrorActionPreference = "Stop"
+. "$PSScriptRoot\Resolve-StsBridgeConfig.ps1"
+
+$gameDir = Resolve-StsGameDir -GameDir $GameDir
+$javaExe = Join-Path $gameDir 'jre\bin\java.exe'
+$mtsJar = Join-Path $gameDir 'ModTheSpire.jar'
 
 if (-not (Test-Path $javaExe)) {
     throw "Bundled game Java not found at $javaExe"

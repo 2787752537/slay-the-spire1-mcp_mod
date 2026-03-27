@@ -3,12 +3,13 @@ package stsmodstarter;
 import basemod.BaseMod;
 import basemod.interfaces.PostInitializeSubscriber;
 import basemod.interfaces.PostUpdateSubscriber;
+import basemod.interfaces.PreUpdateSubscriber;
 import com.evacipated.cardcrawl.modthespire.lib.SpireInitializer;
 import stsmodstarter.bridge.BridgePaths;
 import stsmodstarter.bridge.GameStateBridge;
 
 @SpireInitializer
-public class StsModStarter implements PostInitializeSubscriber, PostUpdateSubscriber {
+public class StsModStarter implements PostInitializeSubscriber, PreUpdateSubscriber, PostUpdateSubscriber {
     public static final String MOD_ID = "stsmodstarter";
     private static final GameStateBridge BRIDGE = new GameStateBridge();
 
@@ -30,7 +31,12 @@ public class StsModStarter implements PostInitializeSubscriber, PostUpdateSubscr
     }
 
     @Override
+    public void receivePreUpdate() {
+        BRIDGE.preTick();
+    }
+
+    @Override
     public void receivePostUpdate() {
-        BRIDGE.tick();
+        BRIDGE.postTick();
     }
 }

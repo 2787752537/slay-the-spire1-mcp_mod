@@ -1,8 +1,14 @@
-$ErrorActionPreference = "Stop"
+param(
+    [string]$GameDir,
+    [int]$DebugPort = 5005
+)
 
-$gameDir = "F:\game\steam\steamapps\common\SlayTheSpire"
-$javaExe = Join-Path $gameDir "jre\bin\java.exe"
-$mtsJar = Join-Path $gameDir "ModTheSpire.jar"
+$ErrorActionPreference = "Stop"
+. "$PSScriptRoot\Resolve-StsBridgeConfig.ps1"
+
+$gameDir = Resolve-StsGameDir -GameDir $GameDir
+$javaExe = Join-Path $gameDir 'jre\bin\java.exe'
+$mtsJar = Join-Path $gameDir 'ModTheSpire.jar'
 
 if (-not (Test-Path $javaExe)) {
     throw "Bundled game Java not found at $javaExe"
@@ -14,9 +20,7 @@ if (-not (Test-Path $mtsJar)) {
 
 Push-Location $gameDir
 try {
-    & $javaExe `
-        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005" `
-        -jar $mtsJar
+    & $javaExe "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$DebugPort" -jar $mtsJar
 } finally {
     Pop-Location
 }

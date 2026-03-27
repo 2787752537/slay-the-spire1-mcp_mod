@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "sts-game": {
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy", "Bypass",
+        "-File", ".\\scripts\\run-sts-mcp.ps1"
+      ],
+      "env": {
+        "STS_MCP_RUNTIME_DIR": "D:\\code\\codex_2\\Sts_mod\\runtime"
+      }
+    }
+  }
+}

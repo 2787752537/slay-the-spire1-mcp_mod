@@ -32,11 +32,13 @@ public final class BridgeProtocol {
         public boolean in_game;
         public String context;
         public String current_screen;
+        public String main_menu_screen;
         public String room_phase;
         public String room_type;
         public Integer act_num;
         public Integer floor_num;
         public Boolean first_room_chosen;
+        public String selected_character;
         public PlayerState player;
         public ArrayList<CreaturePowerState> player_powers = new ArrayList<CreaturePowerState>();
         public ArrayList<CardState> hand = new ArrayList<CardState>();
@@ -47,11 +49,25 @@ public final class BridgeProtocol {
         public ArrayList<MonsterState> monsters = new ArrayList<MonsterState>();
         public ArrayList<RewardState> room_rewards = new ArrayList<RewardState>();
         public ArrayList<OptionState> card_reward_choices = new ArrayList<OptionState>();
+        public ArrayList<OptionState> boss_reward_choices = new ArrayList<OptionState>();
         public ArrayList<OptionState> event_options = new ArrayList<OptionState>();
         public ArrayList<OptionState> campfire_options = new ArrayList<OptionState>();
         public ArrayList<OptionState> hand_select_cards = new ArrayList<OptionState>();
         public ArrayList<OptionState> grid_select_cards = new ArrayList<OptionState>();
+        public ArrayList<OptionState> main_menu_options = new ArrayList<OptionState>();
+        public ArrayList<OptionState> character_options = new ArrayList<OptionState>();
+        public ArrayList<ShopCardState> shop_cards = new ArrayList<ShopCardState>();
+        public ArrayList<ShopItemState> shop_relics = new ArrayList<ShopItemState>();
+        public ArrayList<ShopItemState> shop_potions = new ArrayList<ShopItemState>();
+        public ShopPurgeState shop_purge;
+        public TreasureChestState treasure_chest;
         public MapState map;
+        public boolean confirm_available;
+        public boolean confirm_enabled;
+        public String confirm_context;
+        public boolean cancel_available;
+        public boolean cancel_enabled;
+        public String cancel_context;
         public ArrayList<ActionDescriptor> available_actions = new ArrayList<ActionDescriptor>();
         public String last_error;
     }
@@ -104,7 +120,7 @@ public final class BridgeProtocol {
     }
 
     public static class CardState {
-        public int index;
+        public Integer index;
         public String uuid;
         public String id;
         public String name;
@@ -128,7 +144,7 @@ public final class BridgeProtocol {
     }
 
     public static class MonsterState {
-        public int index;
+        public Integer index;
         public String id;
         public String name;
         public int current_hp;
@@ -145,7 +161,7 @@ public final class BridgeProtocol {
     }
 
     public static class RewardState {
-        public int index;
+        public Integer index;
         public String type;
         public String text;
         public int gold;
@@ -157,29 +173,67 @@ public final class BridgeProtocol {
     }
 
     public static class OptionState {
-        public int index;
+        public Integer index;
         public String id;
         public String label;
         public boolean disabled;
         public String note;
     }
 
+    public static class ShopCardState {
+        public Integer index;
+        public String uuid;
+        public String id;
+        public String name;
+        public int price;
+        public boolean affordable;
+        public boolean colorless;
+        public String description;
+    }
+
+    public static class ShopItemState {
+        public Integer index;
+        public String id;
+        public String name;
+        public int price;
+        public boolean affordable;
+        public boolean purchased;
+        public String item_type;
+    }
+
+    public static class ShopPurgeState {
+        public boolean available;
+        public int price;
+        public boolean affordable;
+    }
+
+    public static class TreasureChestState {
+        public boolean available;
+        public boolean is_open;
+        public String relic_reward;
+        public boolean gold_reward;
+        public boolean cursed;
+    }
+
     public static class MapState {
         public Integer current_x;
         public Integer current_y;
         public ArrayList<MapNodeState> available_nodes = new ArrayList<MapNodeState>();
+        public ArrayList<MapNodeState> all_nodes = new ArrayList<MapNodeState>();
     }
 
     public static class MapNodeState {
-        public int x;
-        public int y;
+        public Integer x;
+        public Integer y;
         public String symbol;
         public String room_type;
         public boolean has_emerald_key;
         public boolean connected;
+        public boolean reachable_now;
         public boolean taken;
+        public ArrayList<String> parents = new ArrayList<String>();
+        public ArrayList<String> children = new ArrayList<String>();
     }
-
     public static class ActionDescriptor {
         public String action;
         public String description;

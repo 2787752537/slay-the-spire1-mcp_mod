@@ -11,8 +11,16 @@ from typing import Any, Dict, List, Optional
 
 from . import __version__
 
-PROTOCOL_VERSION = "2024-11-05"
+LATEST_PROTOCOL_VERSION = "2025-11-25"
+SUPPORTED_PROTOCOL_VERSIONS = (
+    "2025-11-25",
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05",
+)
 SERVER_NAME = "sts-game-mcp"
+STATE_RESOURCE_URI = "sts-game://state"
+RUNTIME_STATUS_RESOURCE_URI = "sts-game://runtime-status"
 
 
 class StsRuntime:
@@ -21,17 +29,20 @@ class StsRuntime:
         self.state_path = runtime_dir / "state.json"
         self.command_path = runtime_dir / "command.json"
         self.response_path = runtime_dir / "response.json"
-        self.runtime_dir.mkdir(parents=True, exist_ok=True)
 
     def read_state(self) -> Dict[str, Any]:
+        return self._normalize_state(json.loads(self.read_state_text()))
+
+    def read_state_text(self) -> str:
         if not self.state_path.exists():
             raise RuntimeError(
                 "State file not found. Start the game with the bridge mod first: "
                 f"{self.state_path}"
             )
-        return json.loads(self.state_path.read_text(encoding="utf-8"))
+        return self.state_path.read_text(encoding="utf-8")
 
     def send_command(self, payload: Dict[str, Any], timeout_ms: int = 5000) -> Dict[str, Any]:
+        before_state_text = self.read_state_text() if self.state_path.exists() else ""
         command_id = str(uuid.uuid4())
         command = {"id": command_id, **payload}
         if self.response_path.exists():
@@ -45,9 +56,40 @@ class StsRuntime:
             if self.response_path.exists():
                 response = json.loads(self.response_path.read_text(encoding="utf-8"))
                 if response.get("id") == command_id:
+                    latest_state = self._wait_for_latest_state(before_state_text, deadline)
+                    response["ack_state"] = response.get("state")
+                    response["state"] = latest_state
+                    response["state_changed"] = latest_state != json.loads(before_state_text) if before_state_text else True
                     return response
             time.sleep(0.05)
         raise RuntimeError(f"Timed out waiting for game response after {timeout_ms} ms")
+
+    def _wait_for_latest_state(self, before_state_text: str, deadline: float) -> Dict[str, Any]:
+        latest_text = before_state_text
+        # step_game 杩斿洖鏃朵紭鍏堢粰璋冪敤鏂规渶鏂扮殑 state.json锛岃€屼笉鏄悓甯ф棫蹇収銆?
+        while time.time() < deadline:
+            try:
+                current_text = self.read_state_text()
+            except RuntimeError:
+                time.sleep(0.05)
+                continue
+            latest_text = current_text
+            if not before_state_text or current_text != before_state_text:
+                return self._normalize_state(json.loads(current_text))
+            time.sleep(0.05)
+        if latest_text:
+            return self._normalize_state(json.loads(latest_text))
+        return self.read_state()
+
+    def _normalize_state(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        if "grid_cards" not in state:
+            state["grid_cards"] = state.get("grid_select_cards") or []
+        if "hand_cards" not in state:
+            state["hand_cards"] = state.get("hand_select_cards") or []
+        map_state = state.get("map") or {}
+        if "map_available_nodes" not in state:
+            state["map_available_nodes"] = map_state.get("available_nodes")
+        return state
 
     def status(self) -> Dict[str, Any]:
         return {
@@ -58,7 +100,15 @@ class StsRuntime:
             "response_path": str(self.response_path),
         }
 
+    def read_resource(self, uri: str) -> Dict[str, Any]:
+        if uri == STATE_RESOURCE_URI:
+            return self.read_state()
+        if uri == RUNTIME_STATUS_RESOURCE_URI:
+            return self.status()
+        raise RuntimeError(f"Unknown resource URI: {uri}")
+
     def _atomic_write(self, path: Path, payload: Dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = path.with_suffix(path.suffix + ".tmp")
         temp_path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2),
@@ -71,6 +121,8 @@ class SimpleMcpServer:
     def __init__(self, runtime: StsRuntime) -> None:
         self.runtime = runtime
         self.running = True
+        self.protocol_version = LATEST_PROTOCOL_VERSION
+        self.initialized = False
 
     def serve(self) -> None:
         while self.running:
@@ -84,16 +136,22 @@ class SimpleMcpServer:
         msg_id = message.get("id")
         params = message.get("params", {})
         if method == "initialize":
+            requested_version = str((params or {}).get("protocolVersion") or "")
+            self.protocol_version = self._negotiate_protocol_version(requested_version)
             self._send_result(
                 msg_id,
                 {
-                    "protocolVersion": PROTOCOL_VERSION,
-                    "capabilities": {"tools": {}},
+                    "protocolVersion": self.protocol_version,
+                    "capabilities": {
+                        "tools": {"listChanged": False},
+                        "resources": {"subscribe": False, "listChanged": False},
+                    },
                     "serverInfo": {"name": SERVER_NAME, "version": __version__},
                 },
             )
             return
         if method == "notifications/initialized":
+            self.initialized = True
             return
         if method == "ping":
             self._send_result(msg_id, {})
@@ -103,6 +161,15 @@ class SimpleMcpServer:
             return
         if method == "tools/call":
             self._handle_tool_call(msg_id, params)
+            return
+        if method == "resources/list":
+            self._send_result(msg_id, {"resources": self._resource_definitions()})
+            return
+        if method == "resources/read":
+            self._handle_resource_read(msg_id, params)
+            return
+        if method == "resources/templates/list":
+            self._send_result(msg_id, {"resourceTemplates": []})
             return
         if method == "shutdown":
             self._send_result(msg_id, {})
@@ -129,6 +196,25 @@ class SimpleMcpServer:
             self._tool_error(msg_id, f"Unknown tool: {name}")
         except Exception as exc:
             self._tool_error(msg_id, str(exc))
+
+    def _handle_resource_read(self, msg_id: Optional[int], params: Dict[str, Any]) -> None:
+        try:
+            uri = str((params or {}).get("uri") or "")
+            payload = self.runtime.read_resource(uri)
+            self._send_result(
+                msg_id,
+                {
+                    "contents": [
+                        {
+                            "uri": uri,
+                            "mimeType": "application/json",
+                            "text": json.dumps(payload, ensure_ascii=False, indent=2),
+                        }
+                    ]
+                },
+            )
+        except Exception as exc:
+            self._send_error(msg_id, -32000, str(exc))
 
     def _tool_success(self, msg_id: Optional[int], payload: Dict[str, Any]) -> None:
         self._send_result(
@@ -167,16 +253,26 @@ class SimpleMcpServer:
                                 "ping",
                                 "play_card",
                                 "end_turn",
+                                "use_potion",
                                 "proceed",
+                                "choose_main_menu_option",
+                                "select_character",
                                 "claim_room_reward",
                                 "choose_reward",
                                 "skip_reward",
+                                "choose_boss_reward",
                                 "choose_event_option",
                                 "choose_campfire_option",
+                                "open_treasure_chest",
+                                "buy_shop_card",
+                                "buy_shop_relic",
+                                "buy_shop_potion",
+                                "buy_shop_purge",
                                 "choose_map_node",
                                 "select_hand_card",
                                 "select_grid_card",
                                 "confirm",
+                                "cancel",
                             ],
                         },
                         "card_uuid": {"type": "string"},
@@ -196,6 +292,22 @@ class SimpleMcpServer:
                 "name": "runtime_status",
                 "description": "Inspect where the bridge reads and writes runtime files.",
                 "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+        ]
+
+    def _resource_definitions(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "uri": STATE_RESOURCE_URI,
+                "name": "Current game state",
+                "description": "Latest state snapshot exported by the Slay the Spire bridge mod.",
+                "mimeType": "application/json",
+            },
+            {
+                "uri": RUNTIME_STATUS_RESOURCE_URI,
+                "name": "Bridge runtime status",
+                "description": "Paths and existence checks for the bridge runtime files.",
+                "mimeType": "application/json",
             },
         ]
 
@@ -229,6 +341,11 @@ class SimpleMcpServer:
         sys.stdout.buffer.write(header)
         sys.stdout.buffer.write(body)
         sys.stdout.buffer.flush()
+
+    def _negotiate_protocol_version(self, requested_version: str) -> str:
+        if requested_version in SUPPORTED_PROTOCOL_VERSIONS:
+            return requested_version
+        return LATEST_PROTOCOL_VERSION
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -264,3 +381,4 @@ def main(argv: Optional[List[str]] = None) -> None:
     runtime_dir = resolve_runtime_dir(args)
     runtime = StsRuntime(runtime_dir)
     SimpleMcpServer(runtime).serve()
+
